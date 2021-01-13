@@ -8,7 +8,7 @@
 #                        corresponding GPIO pin to high.
 # Author:                Michael De Pasquale
 # Creation Date:         2021-01-06
-# Modification Date:     2021-01-10
+# Modification Date:     2021-01-13
 #
 ###############################################################################
 
@@ -30,6 +30,8 @@ gpio_base() { echo "/sys/class/gpio/gpio$1"; }
 # Initialises one or more GPIO pins for output with default value 0.
 gpio_init()
 {
+    loge "gpio_init $@"
+
     if [ "$#" = '0' ]; then
         loge "gpio_init needs at least 1 argument!"
         return 1
@@ -78,6 +80,8 @@ gpio_init()
 # * value - The value to set (integer)
 gpio_set()
 {
+    loge "gpio_set $@"
+
     if [ "$#" != '2' ]; then
         loge "gpio_set needs 2 arguments, got $#"
         return 1
@@ -98,28 +102,37 @@ gpio_set()
     return 0
 }
 
+# Stop the garage door from opening or closing.
+garage_door_stop()
+{
+    loge "Halting movement"
+    gpio_set "$GPIO_STOP" 0 || return $?
+    gpio_set "$GPIO_STOP" 1 || return $?
+    return 0
+}
+
 
 if [ "$#" != '1' ] ; then
     loge "Expected 1 argument, got $#"
     exit 1
 fi
 
+loge "Processing command '$1'"
+
 if [ "$1" = 'up' ]; then
-    gpio_set "$GPIO_UP" 1 || exit 10
-    gpio_set "$GPIO_UP" 0 || exit 11
+    garage_door_stop && gpio_set "$GPIO_UP" 1 && gpio_set "$GPIO_UP" 0
 elif [ "$1" = 'down' ]; then
-    gpio_set "$GPIO_DOWN" 1 || exit 12
-    gpio_set "$GPIO_DOWN" 0 || exit 13
+    garage_door_stop && gpio_set "$GPIO_DOWN" 1 && gpio_set "$GPIO_DOWN" 0
 elif [ "$1" = 'stop' ]; then
-    gpio_set "$GPIO_STOP" 0 || exit 16
-    gpio_set "$GPIO_STOP" 1 || exit 17
+    garage_door_stop
 elif [ "$1" = 'init' ]; then
-    gpio_init "$GPIO_UP" "$GPIO_DOWN" "$GPIO_STOP" || exit 14
-    gpio_set "$GPIO_STOP" 1 || exit 15
+    gpio_init "$GPIO_UP" "$GPIO_DOWN" "$GPIO_STOP" && gpio_set "$GPIO_STOP" 1
 else
     loge "Unrecognised argument '$1', valid arguments are 'up', 'down' or" \
         " 'init' (case sensitive)"
-    exit 2
+    exit 255
 fi
+
+exit $?
 
 # vim: set ts=4 sw=4 tw=79 fdm=indent et :
