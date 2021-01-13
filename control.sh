@@ -8,7 +8,7 @@
 #                        corresponding GPIO pin to high.
 # Author:                Michael De Pasquale
 # Creation Date:         2021-01-06
-# Modification Date:     2021-01-07
+# Modification Date:     2021-01-10
 #
 ###############################################################################
 
@@ -16,6 +16,7 @@
 # Configuration
 GPIO_UP=17  # "Up" gpio pin number
 GPIO_DOWN=27  # "Down" gpio pin number
+GPIO_STOP=22  # "Stop" gpio pin number
 GPIO_DELAY_SEC=0.25  # Time to wait after changing the value of a pin
 INIT_DELAY_SEC=0.25  # Time to wait to ensure that the gpio group has ownership
 
@@ -109,8 +110,12 @@ if [ "$1" = 'up' ]; then
 elif [ "$1" = 'down' ]; then
     gpio_set "$GPIO_DOWN" 1 || exit 12
     gpio_set "$GPIO_DOWN" 0 || exit 13
+elif [ "$1" = 'stop' ]; then
+    gpio_set "$GPIO_STOP" 0 || exit 16
+    gpio_set "$GPIO_STOP" 1 || exit 17
 elif [ "$1" = 'init' ]; then
-    gpio_init "$GPIO_UP" "$GPIO_DOWN" || exit 14
+    gpio_init "$GPIO_UP" "$GPIO_DOWN" "$GPIO_STOP" || exit 14
+    gpio_set "$GPIO_STOP" 1 || exit 15
 else
     loge "Unrecognised argument '$1', valid arguments are 'up', 'down' or" \
         " 'init' (case sensitive)"
