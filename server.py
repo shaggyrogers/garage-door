@@ -8,19 +8,23 @@
                          the garage door opener.
   Author:                Michael De Pasquale
   Creation Date:         2021-01-06
-  Modification Date:     2021-01-07
+  Modification Date:     2021-03-01
 
 """
 
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from http import HTTPStatus
 import json
+from pathlib import Path
 import subprocess
 import sys
 
 
 # Listening address.
-ADDRESS=('', 8080)
+ADDRESS = ('', 8080)
+
+# Control panel page filename
+INDEX_FILENAME = 'index.html'
 
 
 class GarageDoorRequestHandler(BaseHTTPRequestHandler):
@@ -48,15 +52,41 @@ class GarageDoorRequestHandler(BaseHTTPRequestHandler):
         # Parse request
         parts = list(filter(None, self.path.split('/')))
 
-        if len(parts) != 1:
-            self.send_error(
-                HTTPStatus.BAD_REQUEST,
-                "Invalid request, operation expected"
+        # Serve control panel page
+        if not parts or parts[0] == INDEX_FILENAME:
+            return self._serveIndex()
+
+        # Process requested command
+        if len(parts) == 1:
+            return self._handleOperation(parts[0].lower())
+
+        # Bad URI
+        self.send_error(
+            HTTPStatus.BAD_REQUEST,
+            "Invalid request, operation expected"
+        )
+
+    def _serveIndex(self) -> None:
+        """ Serve the control panel page. """
+        if not Path(INDEX_FILENAME).exists():
+            return self.send_error(
+                HTTPStatus.NOT_FOUND,
+                f"{INDEX_FILENAME} not found!"
             )
-            return
 
-        operation = parts[0].lower()
 
+        with open(INDEX_FILENAME, 'rb') as f:
+            payload = f.read()
+
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(payload)))
+        self.end_headers()
+
+        self.wfile.write(payload)
+
+    def _handleOperation(self, operation) -> None:
+        """ Execute a requested operation. """
         # No funny stuff
         if not operation.isalnum() or not operation.isascii():
             self.send_error(
@@ -112,4 +142,4 @@ def main(*args) -> int:
 if __name__ == '__main__':
     sys.exit(main(*sys.argv))
 
-#  vim: set ts=8 sw=4 tw=79 fdm=marker et :
+#  vim: set ts=8 sw=4 tw=79 fdm=indent et :
